@@ -1,4 +1,4 @@
-﻿// This file contains your Data Connector logic
+// This file contains your Data Connector logic
 [Version = "1.0.0"]
 
 section Fulcrum;
@@ -29,7 +29,12 @@ Func = (query as text, page as number, optional previousResult) =>
 
 // Data Source Kind description
 Fulcrum = [
-     TestConnection = (dataSourcePath) => {"Fulcrum.Query", dataSourcePath},
+     TestConnection = (dataSourcePath) => 
+         let 
+             json = Json.Document(dataSourcePath),
+             query = json[#"Fulcrum Query"]
+         in
+           {"Fulcrum.Query", query},
      Authentication = [
          Key = []
         // UsernamePassword = [],
