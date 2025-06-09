@@ -9,3 +9,5 @@ In Power BI Desktop, select File > Options and settings > Options > Security.
 Under Data Extensions, select (Not Recommended) Allow any extension to load without validation or warning. Select OK, and then restart Power BI Desktop.
 
 This connector requires an API key from Fulcrum. After opening the connector from the get data window you will enter your sql query.  On the following page you will enter your API Key and the connector will fetch your data. 
+
+To use this connector on PowerBI Online you must install and use the On-Premises Data Gateway and configure it to use the customer connector.
