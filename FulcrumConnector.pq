@@ -1,53 +1,17 @@
 section FulcrumConnector;
 
-[DataSource.Kind="FulcrumConnector", Publish="FulcrumConnector.Publish"]
-shared FulcrumConnector.Contents = (optional dataSourcePath as nullable text) =>
+// ========== Helpers ==========
+
+// Ensure the user only enters e.g. "https://api.fulcrumapp.com"
+// and we internally call ".../api/v2/..."
+NormalizeApiBase = (baseUrl as text) as text =>
     let
-        perPage = 10000,
-        apiToken = try Extension.CurrentCredential()[Key] otherwise error "API token is missing or invalid",
-
-        // Query Fulcrum for available tables
-        tablesList = PaginatedApiQuery(apiToken, "SELECT * FROM tables ORDER BY 1", perPage),
-
-        // Build base table
-        navTable = Table.FromRecords(List.Transform(tablesList, each [name = _[name]])),
-
-        // Add column with data function
-        navWithFuncs = Table.AddColumn(
-            navTable,
-            "Data",
-            each 
-                try GetFulcrumTable([name], apiToken, perPage) otherwise #table({}, {}),
-            type table
-        ),
-
-        // Add metadata columns required by Table.ToNavigationTable
-        navTyped = Table.AddColumn(navWithFuncs, "ItemKind", each "Table", type text),
-        navNamed = Table.AddColumn(navTyped, "ItemName", each [name], type text),
-        navIsLeaf = Table.AddColumn(navNamed, "IsLeaf", each true, type logical),
-
-        // Final navigation table
-        navigation = Table.ToNavigationTable(
-            navIsLeaf,
-            {"name"},
-            "name",
-            "Data",
-            "ItemKind",
-            "ItemName",
-            "IsLeaf"
-        )
+        trimmed = if Text.EndsWith(baseUrl, "/")
+                  then Text.Start(baseUrl, Text.Length(baseUrl) - 1)
+                  else baseUrl,
+        apiBase = trimmed & "/api/v2/"
     in
-        navigation;
-
-
-// Helper function to query a selected table
-GetFulcrumTable = (tableName as text, apiToken as text, perPage as number) as table =>
-    let
-        tableQuery = Text.Format("SELECT * FROM \""#{0}\"" ORDER BY 1", {tableName}),
-        rows = PaginatedApiQuery(apiToken, tableQuery, perPage),
-        resultTable = Table.FromRecords(rows)
-    in
-        resultTable;
+        apiBase;
 
 Table.ToNavigationTable = (
     table as table,
@@ -72,10 +36,9 @@ Table.ToNavigationTable = (
     in
         navigationTable;
 
-PaginatedApiQuery = (apiToken as text, sqlQuery as text, perPage as number) as list =>
+PaginatedApiQuery = (baseUrl as text, apiToken as text, sqlQuery as text, perPage as number) as list =>
     let
-        baseUrl = "https://api.fulcrumapp.com/api/v2/query",
-        
+        apiBase = NormalizeApiBase(baseUrl),
         headers = [
             #"Content-Type" = "application/json",
             #"Accept" = "application/json",
@@ -84,47 +47,99 @@ PaginatedApiQuery = (apiToken as text, sqlQuery as text, perPage as number) as l
 
         getPage = (page as number) =>
             let
-                url = baseUrl & "?" & Uri.BuildQueryString([
-                    page = Text.From(page),
-                    per_page = Text.From(perPage)
-                ]),
                 body = Text.Format("{""format"": ""json"", ""q"":""#{0}""}", {sqlQuery}),
-                response = Web.Contents(url, [
-                    Headers = headers,
-                    Content = Text.ToBinary(body),
-                    ManualStatusHandling = {400}
-                ]),
+                response = Web.Contents(
+                    apiBase,
+                    [
+                        RelativePath = "query",
+                        Query = [ page = Text.From(page), per_page = Text.From(perPage) ],
+                        Headers = headers,
+                        Content = Text.ToBinary(body),
+                        ManualStatusHandling = {400}
+                    ]
+                ),
                 json = Json.Document(response),
                 rows = if Record.HasFields(json, "rows") then json[rows] else {}
             in
                 rows,
 
-        allPages = List.Generate(
-            () => [page = 1, data = getPage(1)],
-            each List.Count([data]) > 0,
-            each [
-                page = [page] + 1,
-                data = getPage([page] + 1)
-            ],
-            each [data]
-        ),
-        combinedRows = List.Combine(allPages)
+        allPages =
+            List.Generate(
+                () => [page = 1, data = getPage(1)],
+                each List.Count([data]) > 0,
+                each [ page = [page] + 1, data = getPage([page] + 1) ],
+                each [data]
+            )
     in
-        combinedRows;
+        List.Combine(allPages);
 
-
-// Used for validating API Key in TestConnection
-FulcrumConnector = [
-    TestConnection = (dataSourcePath as nullable text) as list =>
+GetFulcrumTable = (baseUrl as text, tableName as text, apiToken as text, perPage as number) as table =>
     let
-        token = try Extension.CurrentCredential()[Key] otherwise error "API token missing or invalid",
+        tableQuery = Text.Format("SELECT * FROM \""#{0}\"" ORDER BY 1", {tableName}),
+        rows = PaginatedApiQuery(baseUrl, apiToken, tableQuery, perPage)
+    in
+        Table.FromRecords(rows);
+
+// ========== Main (implementation) ==========
+
+FulcrumConnectorImpl = (baseUrl as text) as table =>
+    let
+        perPage = 10000,
+        apiToken = try Extension.CurrentCredential()[Key] otherwise error "API token is missing or invalid",
+
+        // List tables
+        tablesList = PaginatedApiQuery(baseUrl, apiToken, "SELECT * FROM tables ORDER BY 1", perPage),
+
+        // Base nav table
+        navTable = Table.FromRecords(List.Transform(tablesList, each [name = _[name]])),
+
+        // Add column with data function
+        navWithFuncs = Table.AddColumn(
+            navTable,
+            "Data",
+            each 
+                try GetFulcrumTable(baseUrl, [name], apiToken, perPage) otherwise #table({}, {}),
+            type table
+        ),
+
+        // Metadata for navigation
+        navTyped  = Table.AddColumn(navWithFuncs, "ItemKind", each "Table", type text),
+        navNamed  = Table.AddColumn(navTyped,    "ItemName", each [name], type text),
+        navIsLeaf = Table.AddColumn(navNamed,    "IsLeaf",   each true,   type logical),
+
+        navigation = Table.ToNavigationTable(navIsLeaf, {"name"}, "name", "Data", "ItemKind", "ItemName", "IsLeaf")
+    in
+        navigation;
+
+// ========== Export with parameter UI metadata ==========
+
+[DataSource.Kind="FulcrumConnector", Publish="FulcrumConnector.Publish"]
+shared FulcrumConnector.Contents =
+    Value.ReplaceType(
+        FulcrumConnectorImpl,
+        type function (
+            baseUrl as (type text meta [
+                Documentation.FieldCaption = "Fulcrum Base URL",
+                Documentation.FieldDescription = "Enter the base URL of your Fulcrum instance (e.g., https://api.fulcrumapp.com). Do not include /api/v2/ — the connector will add it for you.",
+                Documentation.SampleValues = {"https://api.fulcrumapp.com"},
+                DefaultValue = "https://api.fulcrumapp.com"
+
+            ])
+        ) as table
+    );
+
+// ========== Data Source Kind ==========
+
+FulcrumConnector = [
+    TestConnection = (dataSourcePath as text) as list =>
+    let
+        token   = try Extension.CurrentCredential()[Key] otherwise error "API token missing or invalid",
+        apiBase = NormalizeApiBase(dataSourcePath),
         response = Web.Contents(
-            "https://api.fulcrumapp.com/api/v2/forms.json",
+            apiBase,
             [
-                Headers = [
-                    #"X-ApiToken" = token,
-                    #"Accept" = "application/json"
-                ],
+                RelativePath = "forms.json",
+                Headers = [ #"X-ApiToken" = token, #"Accept" = "application/json" ],
                 ManualStatusHandling = {400, 401, 403}
             ]
         ),
@@ -132,14 +147,13 @@ FulcrumConnector = [
         _ = if Record.HasFields(json, "forms") then true else error "Invalid API Key or response format."
     in
         { "FulcrumConnector.Contents", dataSourcePath },
-    // Authentication (API Key)
-    Authentication = [
-        Key = []
-    ],
+
+    Authentication = [ Key = [] ],
     Label = "Fulcrum API Token"
 ];
 
-// Metadata
+// ========== Publish / Icons ==========
+
 FulcrumConnector.Publish = [
     Beta = true,
     Category = "Other",
