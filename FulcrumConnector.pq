@@ -121,35 +121,6 @@ FulcrumConnectorImpl = (baseUrl as text) as table =>
         navigation;
 
 
-// FulcrumConnectorImpl = (baseUrl as text) as table =>
-    // let
-    //     perPage = 10000,
-    //     apiToken = try Extension.CurrentCredential()[Key] otherwise error "API token is missing or invalid",
-
-    //     // List tables
-    //     tablesList = PaginatedApiQuery(baseUrl, apiToken, "SELECT * FROM tables ORDER BY 1", perPage),
-
-    //     // Base nav table
-    //     navTable = Table.FromRecords(List.Transform(tablesList, each [name = _[name]])),
-
-    //     // Add column with data function
-    //     navWithFuncs = Table.AddColumn(
-    //         navTable,
-    //         "Data",
-    //         each 
-    //             try GetFulcrumTable(baseUrl, [name], apiToken, perPage) otherwise #table({}, {}),
-    //         type table
-    //     ),
-
-    //     // Metadata for navigation
-    //     navTyped  = Table.AddColumn(navWithFuncs, "ItemKind", each "Table", type text),
-    //     navNamed  = Table.AddColumn(navTyped,    "ItemName", each [name], type text),
-    //     navIsLeaf = Table.AddColumn(navNamed,    "IsLeaf",   each true,   type logical),
-
-    //     navigation = Table.ToNavigationTable(navIsLeaf, {"name"}, "name", "Data", "ItemKind", "ItemName", "IsLeaf")
-    // in
-    //     navigation;
-
 // ========== Export with parameter UI metadata ==========
 
 [DataSource.Kind="FulcrumConnector", Publish="FulcrumConnector.Publish"]
@@ -212,28 +183,6 @@ ValidateCredential = (baseUrl as text, apiToken as text) as logical =>
                 "Your API token was rejected or the server response wasn’t recognized. Verify the token and base URL, then try again."
             );
 
-
-// FulcrumConnector = [
-//     TestConnection = (dataSourcePath as text) as list =>
-//     let
-//         token   = try Extension.CurrentCredential()[Key] otherwise error "API token missing or invalid",
-//         apiBase = NormalizeApiBase(dataSourcePath),
-//         response = Web.Contents(
-//             apiBase,
-//             [
-//                 RelativePath = "forms.json",
-//                 Headers = [ #"X-ApiToken" = token, #"Accept" = "application/json" ],
-//                 ManualStatusHandling = {400, 401, 403}
-//             ]
-//         ),
-//         json = Json.Document(response),
-//         _ = if Record.HasFields(json, "forms") then true else error "Invalid API Key or response format."
-//     in
-//         { "FulcrumConnector.Contents", dataSourcePath },
-
-//     Authentication = [ Key = [] ],
-//     Label = "Fulcrum API Token"
-// ];
 
 // ========== Publish / Icons ==========
 
