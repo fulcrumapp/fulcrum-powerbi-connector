@@ -85,7 +85,17 @@ GetFulcrumTable = (baseUrl as text, tableName as text, apiToken as text, perPage
 FulcrumConnectorImpl = (baseUrl as text) as table =>
     let
         perPage = 10000,
-        apiToken = try Extension.CurrentCredential()[Key] otherwise error "API token is missing or invalid",
+
+        apiToken =
+            try Extension.CurrentCredential()[Key]
+            otherwise error Error.Record(
+                "AuthenticationError",
+                "Fulcrum API token is missing",
+                "Please provide a valid Fulcrum API token in the connector credentials."
+            ),
+
+        // Validate early (before listing tables)
+        _validated = ValidateCredential(baseUrl, apiToken),
 
         // List tables
         tablesList = PaginatedApiQuery(baseUrl, apiToken, "SELECT * FROM tables ORDER BY 1", perPage),
@@ -97,8 +107,7 @@ FulcrumConnectorImpl = (baseUrl as text) as table =>
         navWithFuncs = Table.AddColumn(
             navTable,
             "Data",
-            each 
-                try GetFulcrumTable(baseUrl, [name], apiToken, perPage) otherwise #table({}, {}),
+            each try GetFulcrumTable(baseUrl, [name], apiToken, perPage) otherwise #table({}, {}),
             type table
         ),
 
@@ -110,6 +119,36 @@ FulcrumConnectorImpl = (baseUrl as text) as table =>
         navigation = Table.ToNavigationTable(navIsLeaf, {"name"}, "name", "Data", "ItemKind", "ItemName", "IsLeaf")
     in
         navigation;
+
+
+// FulcrumConnectorImpl = (baseUrl as text) as table =>
+    // let
+    //     perPage = 10000,
+    //     apiToken = try Extension.CurrentCredential()[Key] otherwise error "API token is missing or invalid",
+
+    //     // List tables
+    //     tablesList = PaginatedApiQuery(baseUrl, apiToken, "SELECT * FROM tables ORDER BY 1", perPage),
+
+    //     // Base nav table
+    //     navTable = Table.FromRecords(List.Transform(tablesList, each [name = _[name]])),
+
+    //     // Add column with data function
+    //     navWithFuncs = Table.AddColumn(
+    //         navTable,
+    //         "Data",
+    //         each 
+    //             try GetFulcrumTable(baseUrl, [name], apiToken, perPage) otherwise #table({}, {}),
+    //         type table
+    //     ),
+
+    //     // Metadata for navigation
+    //     navTyped  = Table.AddColumn(navWithFuncs, "ItemKind", each "Table", type text),
+    //     navNamed  = Table.AddColumn(navTyped,    "ItemName", each [name], type text),
+    //     navIsLeaf = Table.AddColumn(navNamed,    "IsLeaf",   each true,   type logical),
+
+    //     navigation = Table.ToNavigationTable(navIsLeaf, {"name"}, "name", "Data", "ItemKind", "ItemName", "IsLeaf")
+    // in
+    //     navigation;
 
 // ========== Export with parameter UI metadata ==========
 
@@ -132,25 +171,69 @@ shared FulcrumConnector.Contents =
 
 FulcrumConnector = [
     TestConnection = (dataSourcePath as text) as list =>
-    let
-        token   = try Extension.CurrentCredential()[Key] otherwise error "API token missing or invalid",
-        apiBase = NormalizeApiBase(dataSourcePath),
-        response = Web.Contents(
-            apiBase,
-            [
-                RelativePath = "forms.json",
-                Headers = [ #"X-ApiToken" = token, #"Accept" = "application/json" ],
-                ManualStatusHandling = {400, 401, 403}
-            ]
-        ),
-        json = Json.Document(response),
-        _ = if Record.HasFields(json, "forms") then true else error "Invalid API Key or response format."
-    in
         { "FulcrumConnector.Contents", dataSourcePath },
 
     Authentication = [ Key = [] ],
     Label = "Fulcrum API Token"
 ];
+
+ValidateCredential = (baseUrl as text, apiToken as text) as logical =>
+    let
+        apiBase = NormalizeApiBase(baseUrl),
+        response =
+            Web.Contents(
+                apiBase,
+                [
+                    // Use something cheap and reliable. If /api/v2/forms.json is valid for you, keep it.
+                    RelativePath = "forms.json",
+                    Headers = [
+                        #"X-ApiToken" = apiToken,
+                        #"Accept" = "application/json"
+                    ],
+                    ManualStatusHandling = {400, 401, 403}
+                ]
+            ),
+
+        // If we got a 401/403/400, Web.Contents doesn't automatically throw because of ManualStatusHandling.
+        // So try to parse JSON and validate expected fields.
+        json = try Json.Document(response) otherwise null,
+
+        ok =
+            json <> null and
+            Value.Is(json, type record) and
+            Record.HasFields(json, "forms")
+    in
+        if ok then
+            true
+        else
+            error Error.Record(
+                "AuthenticationError",
+                "Fulcrum authentication failed",
+                "Your API token was rejected or the server response wasn’t recognized. Verify the token and base URL, then try again."
+            );
+
+
+// FulcrumConnector = [
+//     TestConnection = (dataSourcePath as text) as list =>
+//     let
+//         token   = try Extension.CurrentCredential()[Key] otherwise error "API token missing or invalid",
+//         apiBase = NormalizeApiBase(dataSourcePath),
+//         response = Web.Contents(
+//             apiBase,
+//             [
+//                 RelativePath = "forms.json",
+//                 Headers = [ #"X-ApiToken" = token, #"Accept" = "application/json" ],
+//                 ManualStatusHandling = {400, 401, 403}
+//             ]
+//         ),
+//         json = Json.Document(response),
+//         _ = if Record.HasFields(json, "forms") then true else error "Invalid API Key or response format."
+//     in
+//         { "FulcrumConnector.Contents", dataSourcePath },
+
+//     Authentication = [ Key = [] ],
+//     Label = "Fulcrum API Token"
+// ];
 
 // ========== Publish / Icons ==========
 
