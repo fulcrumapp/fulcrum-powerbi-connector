@@ -79,7 +79,7 @@ After publishing a report that uses the Fulcrum connector to Power BI Service, y
 5. Under **Gateway connections**, select the gateway cluster that has the Fulcrum connector installed.
 6. Map the Fulcrum data source to the gateway connection you created in the previous step. The data source name and credentials should match.
 7. Click **Apply**.
-7. Optionally, expand **Refresh** and configure a **scheduled refresh** cadence to keep your Fulcrum data up to date automatically.
+8. Optionally, expand **Refresh** and configure a **scheduled refresh** cadence to keep your Fulcrum data up to date automatically.
 
 Once configured, published semantic models using this connector will refresh on schedule through the gateway.
 
