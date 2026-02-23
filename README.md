@@ -68,7 +68,20 @@ To use this connector with **Power BI Service** (Power BI Online) for scheduled 
 4. Enter the Base URL (`https://api.fulcrumapp.com`) and your API key.
 5. Test the connection and save.
 
-Once configured, published datasets using this connector will refresh on schedule through the gateway.
+### Configuring the semantic model for gateway refresh
+
+After publishing a report that uses the Fulcrum connector to Power BI Service, you need to map the semantic model (dataset) to the gateway data source:
+
+1. In Power BI Service, navigate to your **workspace** and find the published semantic model.
+2. Select **⋯ > Settings** (or go to **Settings > Semantic models**).
+3. Expand **Gateway and cloud connections**.
+4. Toggle **On-premises or VNet data gateway** to **On**. This enables the semantic model to route queries through your gateway rather than attempting a direct cloud connection.
+5. Under **Gateway connections**, select the gateway cluster that has the Fulcrum connector installed.
+6. Map the Fulcrum data source to the gateway connection you created in the previous step. The data source name and credentials should match.
+7. Click **Apply**.
+7. Optionally, expand **Refresh** and configure a **scheduled refresh** cadence to keep your Fulcrum data up to date automatically.
+
+Once configured, published semantic models using this connector will refresh on schedule through the gateway.
 
 ## Troubleshooting
 
