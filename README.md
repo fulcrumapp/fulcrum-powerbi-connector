@@ -4,7 +4,7 @@ A custom Power BI connector (`.mez` file) that connects to the [Fulcrum](https:/
 
 ## Prerequisites
 
-- **Power BI Desktop** (Windows only)
+- **Power BI Desktop** and/or **Power BI Service**
 - A **Fulcrum API key** — generate one from your Fulcrum account under **Settings > API**
 
 ## Installation
