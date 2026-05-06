@@ -60,6 +60,8 @@ To use this connector with **Power BI Service** (Power BI Online) for scheduled 
 4. Confirm the path to the folder containing your `.mez` file and enable **Load custom data connectors from this folder**.
 5. Restart the gateway service.
 
+Note: The Power BI On-premises Data Gateway service account, typically NT Service\PBIEgwService, requires Log on as a service rights on the local machine and access to the folder where the connector is being stored.
+
 ### Configuring the data source in Power BI Service
 
 1. In Power BI Service, go to **Settings > Manage connections and gateways**.
@@ -70,16 +72,18 @@ To use this connector with **Power BI Service** (Power BI Online) for scheduled 
 
 ### Configuring the semantic model for gateway refresh
 
-After publishing a report that uses the Fulcrum connector to Power BI Service, you need to map the semantic model (dataset) to the gateway data source:
+After publishing a report that uses the Fulcrum connector to **Power BI Service**, you must map the semantic model (dataset) to the gateway data source so the service can refresh the data through your gateway.
 
-1. In Power BI Service, navigate to your **workspace** and find the published semantic model.
-2. Select **⋯ > Settings** (or go to **Settings > Semantic models**).
+1. In **Power BI Service**, navigate to your **workspace** and locate the published semantic model.
+2. Select **⋯ > Settings** for the semantic model (or go to **Settings > Semantic models** and select it there).
 3. Expand **Gateway and cloud connections**.
-4. Toggle **On-premises or VNet data gateway** to **On**. This enables the semantic model to route queries through your gateway rather than attempting a direct cloud connection.
-5. Under **Gateway connections**, select the gateway cluster that has the Fulcrum connector installed.
-6. Map the Fulcrum data source to the gateway connection you created in the previous step. The data source name and credentials should match.
-7. Click **Apply**.
-8. Optionally, expand **Refresh** and configure a **scheduled refresh** cadence to keep your Fulcrum data up to date automatically.
+4. Toggle **On-premises or VNet data gateway** to **On**. This allows the semantic model to send queries through your gateway instead of attempting a direct cloud connection.
+5. Under **Gateway connections**, select the **gateway cluster** where the Fulcrum connector is installed.
+6. In your **gateway cluster settings**, enable the option that allows the gateway to refresh **custom connectors**.
+7. Create a **new connection** for the **Fulcrum Connector** through the selected gateway.
+8. Map the **Fulcrum data source** to the gateway connection you created. Ensure the **data source name and credentials match** the connection configuration.
+9. Click **Apply** to save the configuration.
+10. (Optional) Expand **Refresh** and configure a **scheduled refresh** cadence to keep your Fulcrum data automatically up to date.
 
 Once configured, published semantic models using this connector will refresh on schedule through the gateway.
 
