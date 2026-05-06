@@ -39,6 +39,17 @@ Power BI blocks uncertified connectors by default. You must lower the security s
 
 The connector automatically paginates through large result sets (10,000 rows per page), so all records are retrieved regardless of table size.
 
+
+## Working with Choice Fields
+
+Single choice, multiple choice, and classification fields are returned as `List` values in Power Query. To convert them into readable, comma-separated text:
+
+1. In **Transform Data**, click the column header of the field showing `List`.
+2. From the dropdown menu, select **Extract Values...**.
+3. Choose **Comma** as the delimiter and click **OK**.
+
+The column will now display a comma-separated string of the selected values. This is standard Power BI behavior and applies to any Fulcrum field that supports multiple selections.
+
 ## On-Premises Data Gateway (Power BI Service)
 
 To use this connector with **Power BI Service** (Power BI Online) for scheduled refresh, you must set up the **On-Premises Data Gateway**:
@@ -98,6 +109,7 @@ Once configured, published semantic models using this connector will refresh on 
 
 ## Additional Resources
 
+- [Fulcrum Power BI Connector Help Article](https://help.fulcrumapp.com/en/articles/3872014-connecting-to-power-bi)
 - [Fulcrum API Documentation](https://docs.fulcrumapp.com/)
 - [Power BI Custom Connectors](https://learn.microsoft.com/en-us/power-bi/connect-data/desktop-connector-extensibility)
 - [On-Premises Data Gateway Documentation](https://learn.microsoft.com/en-us/data-integration/gateway/service-gateway-install)
