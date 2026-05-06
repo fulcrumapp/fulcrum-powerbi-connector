@@ -60,6 +60,8 @@ To use this connector with **Power BI Service** (Power BI Online) for scheduled 
 4. Confirm the path to the folder containing your `.mez` file and enable **Load custom data connectors from this folder**.
 5. Restart the gateway service.
 
+Note: The Power BI On-premises Data Gateway service account, typically NT Service\PBIEgwService, requires Log on as a service rights on the local machine and access to the folder where the connector is being stored.
+
 ### Configuring the data source in Power BI Service
 
 1. In Power BI Service, go to **Settings > Manage connections and gateways**.
